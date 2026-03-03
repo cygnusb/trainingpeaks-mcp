@@ -25,6 +25,7 @@ Ask your AI assistant questions like:
 |------|-------------|
 | `tp_get_workouts` | Query workouts by date range (planned and completed) |
 | `tp_get_workout` | Get detailed metrics for a single workout |
+| `tp_analyze_workout` | Get full workout analysis: power/HR zones, lap data, time-series |
 | `tp_get_peaks` | Compare power PRs (5sec to 90min) and running PRs (400m to marathon) |
 | `tp_get_fitness` | Track CTL, ATL, and TSB (fitness, fatigue, form) |
 | `tp_get_workout_prs` | See personal records set in a specific session |
@@ -153,6 +154,15 @@ Get PRs set during a specific workout.
 ```json
 { "workout_id": "123456789" }
 ```
+
+### tp_analyze_workout
+Get detailed workout analysis from the Peaksware analysis engine: totals (TSS, NP, IF, …), per-channel stats (min/max/avg) and zone distributions for power, heart rate, cadence, etc., lap data, and a full time-series saved to a local JSON file.
+
+```json
+{ "workout_id": "123456789" }
+```
+
+Returns inline summary plus a `data_file` path to the complete time-series for further analysis.
 
 ## What is MCP?
 
