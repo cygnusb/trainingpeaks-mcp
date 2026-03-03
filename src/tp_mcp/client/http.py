@@ -95,6 +95,9 @@ class TPClient:
     Handles authentication, error handling, and response parsing.
     """
 
+    # Class-level cache: persists across instances within the MCP server process
+    _cached_athlete_id: int | None = None
+
     def __init__(self, timeout: float = DEFAULT_TIMEOUT):
         """Initialize the client.
 
@@ -444,6 +447,37 @@ class TPClient:
     def athlete_id(self, value: int | None) -> None:
         """Set the athlete ID."""
         self._athlete_id = value
+
+    async def ensure_athlete_id(self) -> int | None:
+        """Get athlete ID, using class-level cache to avoid redundant API calls.
+
+        Checks (in order): class-level cache, instance-level cache, API.
+        Caches at class level so the value persists across TPClient instances.
+        """
+        if TPClient._cached_athlete_id is not None:
+            self._athlete_id = TPClient._cached_athlete_id
+            return TPClient._cached_athlete_id
+
+        if self._athlete_id is not None:
+            TPClient._cached_athlete_id = self._athlete_id
+            return self._athlete_id
+
+        response = await self.get("/users/v3/user")
+        if not response.success or not response.data:
+            return None
+
+        user_data = response.data.get("user", response.data)
+        athlete_id = user_data.get("personId")
+        if not athlete_id:
+            athletes = user_data.get("athletes", [])
+            if athletes:
+                athlete_id = athletes[0].get("athleteId")
+
+        if athlete_id:
+            self._athlete_id = athlete_id
+            TPClient._cached_athlete_id = athlete_id
+
+        return athlete_id
 
     async def test_token_exchange(self) -> dict[str, Any]:
         """Test the full token exchange flow for diagnostics.
