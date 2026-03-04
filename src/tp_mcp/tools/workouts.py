@@ -384,22 +384,45 @@ async def tp_update_workout(
         if not athlete_id:
             return {"isError": True, "error_code": "AUTH_INVALID", "message": "Could not get athlete ID. Re-authenticate."}
 
-        request = WorkoutUpdateRequest(
-            workoutDay=date,
-            workoutTypeFamilyId=sport,
-            title=title,
-            description=description,
-            coachComments=coach_comments,
-            totalTimePlanned=duration_planned,
-            distancePlanned=distance_planned,
-            tssPlanned=tss_planned,
-            ifPlanned=if_planned,
-            workoutTypeValueId=workout_type,
-        )
-        payload = request.to_api_payload()
+        # 1. Fetch current workout to ensure a full payload for PUT (Read-Modify-Write)
+        get_endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts/{workout_id}"
+        get_response = await client.get(get_endpoint)
+        if get_response.is_error:
+            return {
+                "isError": True,
+                "error_code": get_response.error_code.value if get_response.error_code else "API_ERROR",
+                "message": f"Failed to fetch workout for update: {get_response.message}",
+            }
+        
+        payload = get_response.data.copy() if get_response.data else {}
+        
+        # 2. Update fields in payload
+        if date is not None:
+            payload["workoutDay"] = date
+        if sport is not None:
+            payload["workoutTypeFamilyId"] = sport
+        if title is not None:
+            payload["title"] = title
+        if description is not None:
+            payload["description"] = description
+        if coach_comments is not None:
+            payload["coachComments"] = coach_comments
+        if duration_planned is not None:
+            # Convert to decimal hours for API
+            payload["totalTimePlanned"] = float(duration_planned) / 3600
+        if distance_planned is not None:
+            payload["distancePlanned"] = distance_planned
+        if tss_planned is not None:
+            payload["tssPlanned"] = tss_planned
+        if if_planned is not None:
+            payload["ifPlanned"] = if_planned
+        if workout_type is not None:
+            payload["workoutTypeValueId"] = workout_type
+            
+        payload["athleteId"] = athlete_id  # ensure athleteId is present
 
-        endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts/{workout_id}"
-        response = await client.put(endpoint, json=payload)
+        # 3. Send PUT request with full payload
+        response = await client.put(get_endpoint, json=payload)
 
         if response.is_error:
             return {
@@ -411,14 +434,14 @@ async def tp_update_workout(
         data = response.data or {}
         return {
             "id": str(data.get("workoutId", workout_id)),
-            "date": data.get("workoutDay"),
-            "title": data.get("title"),
-            "sport": data.get("workoutTypeFamilyId"),
+            "date": data.get("workoutDay", payload.get("workoutDay")),
+            "title": data.get("title", payload.get("title")),
+            "sport": data.get("workoutTypeFamilyId", payload.get("workoutTypeFamilyId")),
             "metrics": {
-                "duration_planned": data.get("totalTimePlanned") * 3600 if data.get("totalTimePlanned") is not None else None,
-                "distance_planned": data.get("distancePlanned"),
-                "tss_planned": data.get("tssPlanned"),
-                "if_planned": data.get("ifPlanned"),
+                "duration_planned": data.get("totalTimePlanned", payload.get("totalTimePlanned")) * 3600 if (data.get("totalTimePlanned") is not None or payload.get("totalTimePlanned") is not None) else None,
+                "distance_planned": data.get("distancePlanned", payload.get("distancePlanned")),
+                "tss_planned": data.get("tssPlanned", payload.get("tssPlanned")),
+                "if_planned": data.get("ifPlanned", payload.get("ifPlanned")),
             },
             "message": "Workout updated successfully.",
         }

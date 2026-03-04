@@ -382,11 +382,20 @@ class TPClient:
             )
 
         # Generic error
-        return APIResponse(
-            success=False,
-            error_code=ErrorCode.API_ERROR,
-            message=f"API error: {response.status_code}",
-        )
+        try:
+            body = response.json()
+            error_msg = body.get("message", body.get("error", str(response.status_code)))
+            return APIResponse(
+                success=False,
+                error_code=ErrorCode.API_ERROR,
+                message=f"API error: {response.status_code} - {error_msg} - {response.text}",
+            )
+        except Exception:
+            return APIResponse(
+                success=False,
+                error_code=ErrorCode.API_ERROR,
+                message=f"API error: {response.status_code} - {response.text}",
+            )
 
     async def get(
         self, endpoint: str, params: dict[str, Any] | None = None
