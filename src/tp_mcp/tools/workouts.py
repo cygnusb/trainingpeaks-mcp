@@ -288,6 +288,7 @@ async def tp_create_workout(
             workoutTypeValueId=workout_type,
         )
         payload = request.to_api_payload()
+        payload["athleteId"] = athlete_id  # required by API
 
         endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts"
         response = await client.post(endpoint, json=payload)
