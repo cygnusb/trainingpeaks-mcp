@@ -122,6 +122,48 @@ class WorkoutDetail(BaseModel):
         return self.workout_date
 
 
+class WorkoutCreateRequest(BaseModel):
+    """Request model for creating a planned workout."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    workout_day: str = Field(alias="workoutDay")
+    workout_type_family_id: str = Field(alias="workoutTypeFamilyId")
+    title: str
+    description: str | None = None
+    coach_comments: str | None = Field(default=None, alias="coachComments")
+    total_time_planned: int | float | None = Field(default=None, alias="totalTimePlanned")
+    distance_planned: float | None = Field(default=None, alias="distancePlanned")
+    tss_planned: float | None = Field(default=None, alias="tssPlanned")
+    if_planned: float | None = Field(default=None, alias="ifPlanned")
+    workout_type_value_id: str | int | None = Field(default=None, alias="workoutTypeValueId")
+
+    def to_api_payload(self) -> dict[str, Any]:
+        """Build camelCase API payload excluding None fields."""
+        return self.model_dump(by_alias=True, exclude_none=True)
+
+
+class WorkoutUpdateRequest(BaseModel):
+    """Request model for updating a planned workout (all fields optional)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    workout_day: str | None = Field(default=None, alias="workoutDay")
+    workout_type_family_id: str | None = Field(default=None, alias="workoutTypeFamilyId")
+    title: str | None = None
+    description: str | None = None
+    coach_comments: str | None = Field(default=None, alias="coachComments")
+    total_time_planned: int | float | None = Field(default=None, alias="totalTimePlanned")
+    distance_planned: float | None = Field(default=None, alias="distancePlanned")
+    tss_planned: float | None = Field(default=None, alias="tssPlanned")
+    if_planned: float | None = Field(default=None, alias="ifPlanned")
+    workout_type_value_id: str | int | None = Field(default=None, alias="workoutTypeValueId")
+
+    def to_api_payload(self) -> dict[str, Any]:
+        """Build camelCase API payload excluding None fields."""
+        return self.model_dump(by_alias=True, exclude_none=True)
+
+
 class AnalysisTotal(BaseModel):
     """Single total metric from workout analysis."""
 

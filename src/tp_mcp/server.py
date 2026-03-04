@@ -17,6 +17,8 @@ from tp_mcp.auth import get_credential, validate_auth
 from tp_mcp.tools import (
     tp_analyze_workout,
     tp_auth_status,
+    tp_create_workout,
+    tp_delete_workout,
     tp_get_fitness,
     tp_get_peaks,
     tp_get_profile,
@@ -24,6 +26,7 @@ from tp_mcp.tools import (
     tp_get_workout_prs,
     tp_get_workouts,
     tp_refresh_auth,
+    tp_update_workout,
 )
 
 # Configure logging to stderr (stdout is used for MCP protocol)
@@ -190,6 +193,124 @@ TOOLS = [
             "required": [],
         },
     ),
+    Tool(
+        name="tp_create_workout",
+        description="Create a new planned workout. Returns the created workout with its ID.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "description": "Workout date in YYYY-MM-DD format.",
+                },
+                "sport": {
+                    "type": "string",
+                    "enum": ["Bike", "Run", "Swim", "Strength", "MTB", "XCSkiing", "Rowing", "Triathlon", "Other"],
+                    "description": "Sport type.",
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Workout title.",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Workout description.",
+                },
+                "coach_comments": {
+                    "type": "string",
+                    "description": "Coach notes.",
+                },
+                "duration_planned": {
+                    "type": "number",
+                    "description": "Planned duration in seconds.",
+                },
+                "distance_planned": {
+                    "type": "number",
+                    "description": "Planned distance in meters.",
+                },
+                "tss_planned": {
+                    "type": "number",
+                    "description": "Planned Training Stress Score (>= 0).",
+                },
+                "if_planned": {
+                    "type": "number",
+                    "description": "Planned Intensity Factor (0.0 - 1.5).",
+                },
+                "workout_type": {
+                    "description": "Optional workout type value ID.",
+                },
+            },
+            "required": ["date", "sport", "title"],
+        },
+    ),
+    Tool(
+        name="tp_update_workout",
+        description="Update an existing planned workout. Provide only the fields to change.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "workout_id": {
+                    "type": "string",
+                    "description": "Workout ID to update.",
+                },
+                "date": {
+                    "type": "string",
+                    "description": "New date in YYYY-MM-DD format.",
+                },
+                "sport": {
+                    "type": "string",
+                    "enum": ["Bike", "Run", "Swim", "Strength", "MTB", "XCSkiing", "Rowing", "Triathlon", "Other"],
+                    "description": "New sport type.",
+                },
+                "title": {
+                    "type": "string",
+                    "description": "New title.",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "New description.",
+                },
+                "coach_comments": {
+                    "type": "string",
+                    "description": "New coach notes.",
+                },
+                "duration_planned": {
+                    "type": "number",
+                    "description": "New planned duration in seconds.",
+                },
+                "distance_planned": {
+                    "type": "number",
+                    "description": "New planned distance in meters.",
+                },
+                "tss_planned": {
+                    "type": "number",
+                    "description": "New planned TSS (>= 0).",
+                },
+                "if_planned": {
+                    "type": "number",
+                    "description": "New planned IF (0.0 - 1.5).",
+                },
+                "workout_type": {
+                    "description": "New workout type value ID.",
+                },
+            },
+            "required": ["workout_id"],
+        },
+    ),
+    Tool(
+        name="tp_delete_workout",
+        description="Delete a planned workout permanently. This action is irreversible.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "workout_id": {
+                    "type": "string",
+                    "description": "Workout ID to delete.",
+                },
+            },
+            "required": ["workout_id"],
+        },
+    ),
 ]
 
 
@@ -252,6 +373,40 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         elif name == "tp_refresh_auth":
             result = await tp_refresh_auth(
                 browser=arguments.get("browser", "auto"),
+            )
+
+        elif name == "tp_create_workout":
+            result = await tp_create_workout(
+                date=arguments["date"],
+                sport=arguments["sport"],
+                title=arguments["title"],
+                description=arguments.get("description"),
+                coach_comments=arguments.get("coach_comments"),
+                duration_planned=arguments.get("duration_planned"),
+                distance_planned=arguments.get("distance_planned"),
+                tss_planned=arguments.get("tss_planned"),
+                if_planned=arguments.get("if_planned"),
+                workout_type=arguments.get("workout_type"),
+            )
+
+        elif name == "tp_update_workout":
+            result = await tp_update_workout(
+                workout_id=arguments["workout_id"],
+                date=arguments.get("date"),
+                sport=arguments.get("sport"),
+                title=arguments.get("title"),
+                description=arguments.get("description"),
+                coach_comments=arguments.get("coach_comments"),
+                duration_planned=arguments.get("duration_planned"),
+                distance_planned=arguments.get("distance_planned"),
+                tss_planned=arguments.get("tss_planned"),
+                if_planned=arguments.get("if_planned"),
+                workout_type=arguments.get("workout_type"),
+            )
+
+        elif name == "tp_delete_workout":
+            result = await tp_delete_workout(
+                workout_id=arguments["workout_id"],
             )
 
         else:
