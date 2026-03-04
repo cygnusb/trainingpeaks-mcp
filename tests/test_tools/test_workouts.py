@@ -184,7 +184,7 @@ class TestTpCreateWorkout:
                 "workoutDay": "2026-03-10",
                 "title": "Morning Ride",
                 "workoutTypeFamilyId": "Bike",
-                "totalTimePlanned": 3600,
+                "totalTimePlanned": 1.0, # 1.0 hour = 3600 seconds
                 "tssPlanned": 80.0,
             },
         )
@@ -199,6 +199,7 @@ class TestTpCreateWorkout:
         assert result["id"] == "9001"
         assert result["title"] == "Morning Ride"
         assert result["sport"] == "Bike"
+        assert result["metrics"]["duration_planned"] == 3600
         assert result["metrics"]["tss_planned"] == 80.0
         assert result["message"] == "Workout created successfully."
 
@@ -217,11 +218,12 @@ class TestTpCreateWorkout:
             mock_instance.post = capture_post
             mock_client.return_value.__aenter__.return_value = mock_instance
 
-            await tp_create_workout(date="2026-03-10", sport="Run", title="X", tss_planned=50.0)
+            await tp_create_workout(date="2026-03-10", sport="Run", title="X", duration_planned=3600, tss_planned=50.0)
 
         assert "workoutDay" in captured_payload
         assert "workoutTypeFamilyId" in captured_payload
         assert "tssPlanned" in captured_payload
+        assert captured_payload["totalTimePlanned"] == 1.0 # 3600s / 3600
         # None fields must be absent
         assert "description" not in captured_payload
         assert "coachComments" not in captured_payload

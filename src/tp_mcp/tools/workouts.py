@@ -307,7 +307,7 @@ async def tp_create_workout(
             "title": data.get("title", title),
             "sport": data.get("workoutTypeFamilyId", sport),
             "metrics": {
-                "duration_planned": data.get("totalTimePlanned"),
+                "duration_planned": data.get("totalTimePlanned") * 3600 if data.get("totalTimePlanned") is not None else None,
                 "distance_planned": data.get("distancePlanned"),
                 "tss_planned": data.get("tssPlanned"),
                 "if_planned": data.get("ifPlanned"),
@@ -415,7 +415,7 @@ async def tp_update_workout(
             "title": data.get("title"),
             "sport": data.get("workoutTypeFamilyId"),
             "metrics": {
-                "duration_planned": data.get("totalTimePlanned"),
+                "duration_planned": data.get("totalTimePlanned") * 3600 if data.get("totalTimePlanned") is not None else None,
                 "distance_planned": data.get("distancePlanned"),
                 "tss_planned": data.get("tssPlanned"),
                 "if_planned": data.get("ifPlanned"),

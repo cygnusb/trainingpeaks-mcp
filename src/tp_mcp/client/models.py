@@ -39,8 +39,16 @@ class WorkoutSummary(BaseModel):
     title: str | None = None
     workout_type: str | int | None = Field(default=None, alias="workoutTypeValueId")
     sport: str | None = Field(default=None, alias="workoutTypeFamilyId")
-    duration_planned: int | float | None = Field(default=None, alias="totalTimePlanned")
+    total_time_planned: int | float | None = Field(default=None, alias="totalTimePlanned")
     duration_actual: int | float | None = Field(default=None, alias="totalTime")
+
+    @property
+    def duration_planned(self) -> int | float | None:
+        """Planned duration in seconds (converted from API decimal hours)."""
+        if self.total_time_planned is None:
+            return None
+        return self.total_time_planned * 3600
+
     tss_planned: float | None = Field(default=None, alias="tssPlanned")
     tss_actual: float | None = Field(default=None, alias="tssActual")
     distance_planned: float | None = Field(default=None, alias="distancePlanned")
@@ -100,8 +108,16 @@ class WorkoutDetail(BaseModel):
     description: str | None = None
     coach_comments: str | None = Field(default=None, alias="coachComments")
     athlete_comments: str | None = Field(default=None, alias="athleteComments")
-    duration_planned: int | float | None = Field(default=None, alias="totalTimePlanned")
+    total_time_planned: int | float | None = Field(default=None, alias="totalTimePlanned")
     duration_actual: int | float | None = Field(default=None, alias="totalTime")
+
+    @property
+    def duration_planned(self) -> int | float | None:
+        """Planned duration in seconds (converted from API decimal hours)."""
+        if self.total_time_planned is None:
+            return None
+        return self.total_time_planned * 3600
+
     tss_planned: float | None = Field(default=None, alias="tssPlanned")
     tss_actual: float | None = Field(default=None, alias="tssActual")
     if_planned: float | None = Field(default=None, alias="ifPlanned")
@@ -139,8 +155,11 @@ class WorkoutCreateRequest(BaseModel):
     workout_type_value_id: str | int | None = Field(default=None, alias="workoutTypeValueId")
 
     def to_api_payload(self) -> dict[str, Any]:
-        """Build camelCase API payload excluding None fields."""
-        return self.model_dump(by_alias=True, exclude_none=True)
+        """Build camelCase API payload excluding None fields, converting duration to decimal hours."""
+        data = self.model_dump(by_alias=True, exclude_none=True)
+        if "totalTimePlanned" in data and data["totalTimePlanned"] is not None:
+            data["totalTimePlanned"] = data["totalTimePlanned"] / 3600
+        return data
 
 
 class WorkoutUpdateRequest(BaseModel):
@@ -160,8 +179,11 @@ class WorkoutUpdateRequest(BaseModel):
     workout_type_value_id: str | int | None = Field(default=None, alias="workoutTypeValueId")
 
     def to_api_payload(self) -> dict[str, Any]:
-        """Build camelCase API payload excluding None fields."""
-        return self.model_dump(by_alias=True, exclude_none=True)
+        """Build camelCase API payload excluding None fields, converting duration to decimal hours."""
+        data = self.model_dump(by_alias=True, exclude_none=True)
+        if "totalTimePlanned" in data and data["totalTimePlanned"] is not None:
+            data["totalTimePlanned"] = data["totalTimePlanned"] / 3600
+        return data
 
 
 class AnalysisTotal(BaseModel):

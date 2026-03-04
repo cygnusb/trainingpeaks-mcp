@@ -65,3 +65,7 @@ Thumbs.db
 
 # Git worktrees
 .worktrees/
+
+.claude/
+har/
+uv.lock
