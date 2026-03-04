@@ -1,9 +1,5 @@
 # TrainingPeaks MCP Server
 
-<a href="https://glama.ai/mcp/servers/@JamsusMaximus/TrainingPeaks-MCP">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@JamsusMaximus/TrainingPeaks-MCP/badge" alt="TrainingPeaks MCP server" />
-</a>
-
 Connect TrainingPeaks to Claude and other AI assistants via the Model Context Protocol (MCP). Query your workouts, analyze training load, compare power data, and track fitness trends through natural conversation.
 
 **No API approval required.** The official Training Peaks API is approval-gated, but this server uses secure cookie authentication that any user can set up in minutes. Your cookie is stored in your system keyring, never transmitted anywhere except to TrainingPeaks.
@@ -29,6 +25,10 @@ Ask your AI assistant questions like:
 | `tp_get_peaks` | Compare power PRs (5sec to 90min) and running PRs (400m to marathon) |
 | `tp_get_fitness` | Track CTL, ATL, and TSB (fitness, fatigue, form) |
 | `tp_get_workout_prs` | See personal records set in a specific session |
+| `tp_get_profile` | Get athlete profile details (ID, name, account type) |
+| `tp_create_workout` | Create new planned workouts on your calendar |
+| `tp_update_workout` | Modify existing planned workouts |
+| `tp_delete_workout` | Remove workouts from your calendar |
 | `tp_refresh_auth` | Re-authenticate if your session expires (extracts fresh cookie from browser) |
 
 ---
@@ -40,7 +40,7 @@ Ask your AI assistant questions like:
 If you have [Claude Code](https://claude.ai/code), paste this prompt:
 
 ```
-Set up the TrainingPeaks MCP server from https://github.com/JamsusMaximus/trainingpeaks-mcp - clone it, create a venv, install it, then walk me through getting my TrainingPeaks cookie from my browser and run tp-mcp auth. Finally, add it to my Claude Desktop config.
+Set up the TrainingPeaks MCP server from https://github.com/cygnusb/trainingpeaks-mcp - clone it, create a venv, install it, then walk me through getting my TrainingPeaks cookie from my browser and run tp-mcp auth. Finally, add it to my Claude Desktop config.
 ```
 
 Claude will handle the installation and guide you through authentication step-by-step.
@@ -50,7 +50,7 @@ Claude will handle the installation and guide you through authentication step-by
 #### Step 1: Install
 
 ```bash
-git clone https://github.com/JamsusMaximus/trainingpeaks-mcp.git
+git clone https://github.com/cygnusb/trainingpeaks-mcp.git
 cd trainingpeaks-mcp
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
@@ -164,13 +164,51 @@ Get detailed workout analysis from the Peaksware analysis engine: totals (TSS, N
 
 Returns inline summary plus a `data_file` path to the complete time-series for further analysis.
 
+### tp_get_profile
+Get details about the authenticated athlete.
+
+```json
+{}
+```
+
+### tp_create_workout
+Create a new planned workout on the athlete's calendar.
+
+```json
+{
+  "date": "2026-03-10",
+  "sport": "Bike",
+  "title": "Easy Recovery Ride",
+  "duration_planned": 3600,
+  "description": "Keep it in Zone 1"
+}
+```
+
+### tp_update_workout
+Update an existing planned workout.
+
+```json
+{
+  "workout_id": "123456789",
+  "title": "Updated Ride Title",
+  "tss_planned": 45
+}
+```
+
+### tp_delete_workout
+Delete a workout from the calendar.
+
+```json
+{ "workout_id": "123456789" }
+```
+
 ## What is MCP?
 
 [Model Context Protocol](https://modelcontextprotocol.io) is an open standard for connecting AI assistants to external data sources. MCP servers expose tools that AI models can call to fetch real-time data, enabling assistants like Claude to access your Training Peaks account through natural language.
 
 ## Security
 
-**TL;DR: Your cookie is encrypted on disk, exchanged for short-lived OAuth tokens, never shown to Claude, and only ever sent to TrainingPeaks. The server is read-only and has no network ports.**
+**TL;DR: Your cookie is encrypted on disk, exchanged for short-lived OAuth tokens, never shown to Claude, and only ever sent to TrainingPeaks. This server supports read/write for workouts and has no network ports.**
 
 This server is designed with defense-in-depth. Your TrainingPeaks session cookie is sensitive - it grants access to your training data - so we treat it accordingly.
 
@@ -204,11 +242,11 @@ cj = func(domain_name=".trainingpeaks.com")
 
 Claude cannot modify this via tool parameters. The only parameter is `browser` (chrome/firefox/etc), not the domain. To change the domain would require modifying the source code.
 
-### Read-Only Access
+### Read/Write Access
 
-This server provides **read-only** access to TrainingPeaks:
+This server provides access to TrainingPeaks:
 - ✅ Query workouts, fitness metrics, personal records
-- ❌ Cannot create, modify, or delete workouts
+- ✅ Create, modify, or delete planned workouts
 - ❌ Cannot change account settings
 - ❌ Cannot access billing or payment info
 
@@ -222,7 +260,7 @@ The MCP server uses **stdio transport only** - it communicates with Claude Deskt
 |--------|-----------|
 | Read your workouts | ✅ Yes |
 | Read your fitness metrics | ✅ Yes |
-| Modify any TrainingPeaks data | ❌ No |
+| Create/Modify/Delete planned workouts | ✅ Yes |
 | Access other websites | ❌ No (domain hardcoded) |
 | Send your cookie/token anywhere except TrainingPeaks | ❌ No |
 | Expose your cookie to Claude | ❌ No (sanitized) |
@@ -259,3 +297,9 @@ ruff check src/
 ## License
 
 MIT
+
+---
+
+## Credits
+
+Originally based on the [TrainingPeaks MCP Server](https://github.com/JamsusMaximus/trainingpeaks-mcp) by JamsusMaximus.
