@@ -3,6 +3,7 @@
 from tp_mcp.tools.analyze import tp_analyze_workout
 from tp_mcp.tools.auth_status import tp_auth_status
 from tp_mcp.tools.fitness import tp_get_fitness
+from tp_mcp.tools.metrics import tp_get_metrics, tp_get_metrics_insights
 from tp_mcp.tools.peaks import tp_get_peaks, tp_get_workout_prs
 from tp_mcp.tools.profile import tp_get_profile
 from tp_mcp.tools.refresh_auth import tp_refresh_auth
@@ -14,6 +15,8 @@ __all__ = [
     "tp_create_workout",
     "tp_delete_workout",
     "tp_get_fitness",
+    "tp_get_metrics",
+    "tp_get_metrics_insights",
     "tp_get_peaks",
     "tp_get_profile",
     "tp_get_workout",

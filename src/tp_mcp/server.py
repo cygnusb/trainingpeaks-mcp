@@ -20,6 +20,8 @@ from tp_mcp.tools import (
     tp_create_workout,
     tp_delete_workout,
     tp_get_fitness,
+    tp_get_metrics,
+    tp_get_metrics_insights,
     tp_get_peaks,
     tp_get_profile,
     tp_get_workout,
@@ -155,6 +157,52 @@ TOOLS = [
                 "end_date": {
                     "type": "string",
                     "description": "YYYY-MM-DD. For historical queries (e.g., 2022-03-01).",
+                },
+            },
+            "required": [],
+        },
+    ),
+    Tool(
+        name="tp_get_metrics",
+        description="Get daily health & sleep metrics (sleep hours, deep/REM/light sleep, HRV, weight, etc.).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "integer",
+                    "description": "Days from today (default 30). Ignored if dates provided.",
+                    "default": 30,
+                },
+                "start_date": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD. For historical queries.",
+                },
+                "end_date": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD. For historical queries.",
+                },
+            },
+            "required": [],
+        },
+    ),
+    Tool(
+        name="tp_get_metrics_insights",
+        description="Get health metric trends with rolling mean and normal range (e.g. sleep trend over time).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "integer",
+                    "description": "Days from today (default 30). Ignored if dates provided.",
+                    "default": 30,
+                },
+                "start_date": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD. For historical queries.",
+                },
+                "end_date": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD. For historical queries.",
                 },
             },
             "required": [],
@@ -361,6 +409,20 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         elif name == "tp_get_fitness":
             result = await tp_get_fitness(
                 days=arguments.get("days", 90),
+                start_date=arguments.get("start_date"),
+                end_date=arguments.get("end_date"),
+            )
+
+        elif name == "tp_get_metrics":
+            result = await tp_get_metrics(
+                days=arguments.get("days", 30),
+                start_date=arguments.get("start_date"),
+                end_date=arguments.get("end_date"),
+            )
+
+        elif name == "tp_get_metrics_insights":
+            result = await tp_get_metrics_insights(
+                days=arguments.get("days", 30),
                 start_date=arguments.get("start_date"),
                 end_date=arguments.get("end_date"),
             )

@@ -148,6 +148,24 @@ Get training load metrics over time.
 
 Returns daily CTL (chronic training load / fitness), ATL (acute training load / fatigue), and TSB (training stress balance / form).
 
+### tp_get_metrics
+Get daily health & sleep metrics synced from your wearable (e.g. Coros, Garmin).
+
+```json
+{ "days": 30 }
+```
+
+Returns per-day entries with all available metric types such as Sleep Hours, Time in Deep/REM/Light Sleep, HRV, Body Weight, etc.
+
+### tp_get_metrics_insights
+Get health metric trends with rolling mean and normal range.
+
+```json
+{ "days": 30 }
+```
+
+Returns a time-series per metric type (e.g. Sleep Hours) with rolling mean and normal range (`rangeLow`/`rangeHigh`) once enough data is available. Useful for spotting trends.
+
 ### tp_get_workout_prs
 Get PRs set during a specific workout.
 
