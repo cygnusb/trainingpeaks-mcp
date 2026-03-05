@@ -183,7 +183,7 @@ class TestTpCreateWorkout:
                 "workoutId": 9001,
                 "workoutDay": "2026-03-10",
                 "title": "Morning Ride",
-                "workoutTypeFamilyId": "Bike",
+                "workoutTypeValueId": 2,  # Bike family ID
                 "totalTimePlanned": 1.0, # 1.0 hour = 3600 seconds
                 "tssPlanned": 80.0,
             },
@@ -210,7 +210,7 @@ class TestTpCreateWorkout:
 
         async def capture_post(endpoint, json=None):
             captured_payload.update(json or {})
-            return APIResponse(success=True, data={"workoutId": 1, "workoutDay": "2026-03-10", "title": "X", "workoutTypeFamilyId": "Run"})
+            return APIResponse(success=True, data={"workoutId": 1, "workoutDay": "2026-03-10", "title": "X", "workoutTypeValueId": 3})
 
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
             mock_instance = AsyncMock()
@@ -221,7 +221,8 @@ class TestTpCreateWorkout:
             await tp_create_workout(date="2026-03-10", sport="Run", title="X", duration_planned=3600, tss_planned=50.0)
 
         assert "workoutDay" in captured_payload
-        assert "workoutTypeFamilyId" in captured_payload
+        assert "workoutTypeValueId" in captured_payload
+        assert captured_payload["workoutTypeValueId"] == 3  # Run family ID
         assert "tssPlanned" in captured_payload
         assert captured_payload["totalTimePlanned"] == 1.0 # 3600s / 3600
         # None fields must be absent
@@ -297,18 +298,31 @@ class TestTpUpdateWorkout:
     @pytest.mark.asyncio
     async def test_update_workout_success(self):
         """Test successful workout update."""
+        current = APIResponse(
+            success=True,
+            data={
+                "workoutId": 1001,
+                "workoutDay": "2026-03-10",
+                "title": "Old Title",
+                "workoutTypeValueId": 2,  # Bike family ID
+            },
+        )
         updated = APIResponse(
             success=True,
             data={
                 "workoutId": 1001,
                 "workoutDay": "2026-03-10",
                 "title": "Updated Ride",
-                "workoutTypeFamilyId": "Bike",
+                "workoutTypeValueId": 2,  # Bike family ID
                 "tssPlanned": 100.0,
             },
         )
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
-            _mock_client_with_athlete(mock_client, put=updated)
+            mock_instance = AsyncMock()
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=current)
+            mock_instance.put = AsyncMock(return_value=updated)
+            mock_client.return_value.__aenter__.return_value = mock_instance
             result = await tp_update_workout(workout_id="1001", title="Updated Ride", tss_planned=100.0)
 
         assert "isError" not in result or not result.get("isError")
@@ -318,8 +332,12 @@ class TestTpUpdateWorkout:
 
     @pytest.mark.asyncio
     async def test_update_workout_payload_exclude_none(self):
-        """Test that update payload only contains provided fields."""
+        """Test that update payload merges new fields onto fetched workout fields."""
         captured_payload = {}
+        current = APIResponse(
+            success=True,
+            data={"workoutId": 1001, "workoutDay": "2026-03-10", "workoutTypeValueId": 2},
+        )
 
         async def capture_put(endpoint, json=None):
             captured_payload.update(json or {})
@@ -328,6 +346,7 @@ class TestTpUpdateWorkout:
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=current)
             mock_instance.put = capture_put
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -335,8 +354,8 @@ class TestTpUpdateWorkout:
 
         assert "title" in captured_payload
         assert captured_payload["title"] == "New Title"
-        # Only title was provided - no other fields
-        assert "workoutDay" not in captured_payload
+        # Fields from the fetched workout are preserved
+        assert captured_payload["workoutDay"] == "2026-03-10"
         assert "tssPlanned" not in captured_payload
 
     @pytest.mark.asyncio
@@ -371,10 +390,13 @@ class TestTpUpdateWorkout:
 
     @pytest.mark.asyncio
     async def test_update_workout_not_found(self):
-        """Test API not found error."""
+        """Test API not found error when workout does not exist."""
         not_found = APIResponse(success=False, error_code=ErrorCode.NOT_FOUND, message="Not found")
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
-            _mock_client_with_athlete(mock_client, put=not_found)
+            mock_instance = AsyncMock()
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=not_found)
+            mock_client.return_value.__aenter__.return_value = mock_instance
             result = await tp_update_workout(workout_id="9999", title="X")
         assert result["isError"] is True
         assert result["error_code"] == "NOT_FOUND"

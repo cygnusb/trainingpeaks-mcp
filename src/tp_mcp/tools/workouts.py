@@ -5,7 +5,26 @@ from typing import Any, Literal
 
 from tp_mcp.client import TPClient, WorkoutCreateRequest, WorkoutUpdateRequest, parse_workout_detail, parse_workout_list
 
-VALID_SPORTS = {"Bike", "Run", "Swim", "Strength", "MTB", "XCSkiing", "Rowing", "Triathlon", "Other"}
+# Mapping from user-facing sport name to TP API workoutTypeValueId (family ID)
+SPORT_TO_FAMILY_ID: dict[str, int] = {
+    "Swim": 1,
+    "Bike": 2,
+    "Run": 3,
+    "Brick": 4,
+    "Crosstrain": 5,
+    "Race": 6,
+    "DayOff": 7,
+    "MTB": 8,
+    "Strength": 29,
+    "Custom": 10,
+    "XCSkiing": 11,
+    "Rowing": 12,
+    "Walk": 13,
+    "Other": 100,
+}
+VALID_SPORTS = set(SPORT_TO_FAMILY_ID.keys())
+# Reverse mapping for display
+FAMILY_ID_TO_SPORT: dict[int, str] = {v: k for k, v in SPORT_TO_FAMILY_ID.items()}
 
 
 async def _get_athlete_id(client: TPClient) -> int | None:
@@ -231,7 +250,7 @@ async def tp_create_workout(
 
     Args:
         date: Workout date in ISO format (YYYY-MM-DD).
-        sport: Sport type (Bike, Run, Swim, Strength, MTB, XCSkiing, Rowing, Triathlon, Other).
+        sport: Sport type (Bike, Run, Swim, Brick, Crosstrain, Race, DayOff, MTB, Strength, Custom, XCSkiing, Rowing, Walk, Other).
         title: Workout title.
         description: Optional workout description.
         coach_comments: Optional coach notes.
@@ -275,9 +294,10 @@ async def tp_create_workout(
         if not athlete_id:
             return {"isError": True, "error_code": "AUTH_INVALID", "message": "Could not get athlete ID. Re-authenticate."}
 
+        family_id = SPORT_TO_FAMILY_ID[sport]
         request = WorkoutCreateRequest(
             workoutDay=date,
-            workoutTypeFamilyId=sport,
+            workoutTypeValueId=workout_type if workout_type is not None else family_id,
             title=title,
             description=description,
             coachComments=coach_comments,
@@ -285,7 +305,6 @@ async def tp_create_workout(
             distancePlanned=distance_planned,
             tssPlanned=tss_planned,
             ifPlanned=if_planned,
-            workoutTypeValueId=workout_type,
         )
         payload = request.to_api_payload()
         payload["athleteId"] = athlete_id  # required by API
@@ -301,11 +320,13 @@ async def tp_create_workout(
             }
 
         data = response.data or {}
+        returned_family_id = data.get("workoutTypeValueId")
+        returned_sport = FAMILY_ID_TO_SPORT.get(returned_family_id, sport) if returned_family_id else sport
         return {
             "id": str(data.get("workoutId", "")),
             "date": data.get("workoutDay", date),
             "title": data.get("title", title),
-            "sport": data.get("workoutTypeFamilyId", sport),
+            "sport": returned_sport,
             "metrics": {
                 "duration_planned": data.get("totalTimePlanned") * 3600 if data.get("totalTimePlanned") is not None else None,
                 "distance_planned": data.get("distancePlanned"),
@@ -334,7 +355,7 @@ async def tp_update_workout(
     Args:
         workout_id: The workout ID to update.
         date: New date in ISO format (YYYY-MM-DD).
-        sport: New sport type.
+        sport: New sport type (Bike, Run, Swim, Brick, Crosstrain, Race, DayOff, MTB, Strength, Custom, XCSkiing, Rowing, Walk, Other).
         title: New title.
         description: New description.
         coach_comments: New coach notes.
@@ -400,7 +421,7 @@ async def tp_update_workout(
         if date is not None:
             payload["workoutDay"] = date
         if sport is not None:
-            payload["workoutTypeFamilyId"] = sport
+            payload["workoutTypeValueId"] = SPORT_TO_FAMILY_ID[sport]
         if title is not None:
             payload["title"] = title
         if description is not None:
@@ -432,11 +453,13 @@ async def tp_update_workout(
             }
 
         data = response.data or {}
+        returned_family_id = data.get("workoutTypeValueId") or payload.get("workoutTypeValueId")
+        returned_sport = FAMILY_ID_TO_SPORT.get(returned_family_id, str(returned_family_id)) if returned_family_id else None
         return {
             "id": str(data.get("workoutId", workout_id)),
             "date": data.get("workoutDay", payload.get("workoutDay")),
             "title": data.get("title", payload.get("title")),
-            "sport": data.get("workoutTypeFamilyId", payload.get("workoutTypeFamilyId")),
+            "sport": returned_sport,
             "metrics": {
                 "duration_planned": data.get("totalTimePlanned", payload.get("totalTimePlanned")) * 3600 if (data.get("totalTimePlanned") is not None or payload.get("totalTimePlanned") is not None) else None,
                 "distance_planned": data.get("distancePlanned", payload.get("distancePlanned")),

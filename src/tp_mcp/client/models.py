@@ -144,7 +144,7 @@ class WorkoutCreateRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     workout_day: str = Field(alias="workoutDay")
-    workout_type_family_id: str = Field(alias="workoutTypeFamilyId")
+    workout_type_value_id: int = Field(alias="workoutTypeValueId")
     title: str
     description: str | None = None
     coach_comments: str | None = Field(default=None, alias="coachComments")
@@ -152,7 +152,6 @@ class WorkoutCreateRequest(BaseModel):
     distance_planned: float | None = Field(default=None, alias="distancePlanned")
     tss_planned: float | None = Field(default=None, alias="tssPlanned")
     if_planned: float | None = Field(default=None, alias="ifPlanned")
-    workout_type_value_id: str | int | None = Field(default=None, alias="workoutTypeValueId")
 
     def to_api_payload(self) -> dict[str, Any]:
         """Build camelCase API payload excluding None fields, converting duration to decimal hours."""
@@ -168,7 +167,7 @@ class WorkoutUpdateRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     workout_day: str | None = Field(default=None, alias="workoutDay")
-    workout_type_family_id: str | None = Field(default=None, alias="workoutTypeFamilyId")
+    workout_type_value_id: int | None = Field(default=None, alias="workoutTypeValueId")
     title: str | None = None
     description: str | None = None
     coach_comments: str | None = Field(default=None, alias="coachComments")
@@ -176,7 +175,6 @@ class WorkoutUpdateRequest(BaseModel):
     distance_planned: float | None = Field(default=None, alias="distancePlanned")
     tss_planned: float | None = Field(default=None, alias="tssPlanned")
     if_planned: float | None = Field(default=None, alias="ifPlanned")
-    workout_type_value_id: str | int | None = Field(default=None, alias="workoutTypeValueId")
 
     def to_api_payload(self) -> dict[str, Any]:
         """Build camelCase API payload excluding None fields, converting duration to decimal hours."""
