@@ -15,6 +15,7 @@ DEFAULT_TIMEOUT = 30.0
 MIN_REQUEST_INTERVAL = 0.15  # 150ms between requests to avoid rate limiting
 TOKEN_ENDPOINT = "/users/v3/token"
 TOKEN_REFRESH_BUFFER = 60  # Refresh token 60s before expiry
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
 
 
 class APIError(Exception):
@@ -148,6 +149,7 @@ class TPClient:
             "Authorization": f"Bearer {self._token_cache.access_token}",
             "Accept": "application/json",
             "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
         }
 
     def _get_cookie_headers(self, cookie: str) -> dict[str, str]:
@@ -163,6 +165,7 @@ class TPClient:
             "Cookie": f"Production_tpAuth={cookie}",
             "Accept": "application/json",
             "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
         }
 
     async def _exchange_cookie_for_token(self) -> APIResponse:
