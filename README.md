@@ -6,14 +6,22 @@ Connect TrainingPeaks to Claude and other AI assistants via the Model Context Pr
 
 ## What You Can Do
 
-![Example conversation with Claude using TrainingPeaks MCP](docs/images/screenshot.png)
+Use your AI assistant for:
+- **Workout lookup and drill-down:** list planned/completed sessions, inspect single workouts, and review session PRs.
+- **Workout analysis:** analyze one workout with totals, power/HR/cadence zones, laps, and full time-series export.
+- **Fitness and form trends:** track CTL/ATL/TSB over custom ranges to assess load, fatigue, and readiness.
+- **Health metric checks:** pull daily sleep/recovery/body metrics and trend them with rolling means and normal ranges.
+- **Cross-check training vs metrics:** correlate hard weeks/sessions with sleep, HRV, and form to spot useful patterns.
+- **Planning and editing:** create, move/update, and delete planned workouts directly from chat.
+- **Structured workout editing:** create, read und update structured interval sets (including targets and rests) in TrainingPeaks.
 
-Ask your AI assistant questions like:
-- "Compare my FTP progression this year vs last year"
-- "What was my TSS ramp rate in the 6 weeks before my best 20-min power?"
-- "Am I ready to race? Show my form trend and recent workout quality"
-- "Which days of the week do I typically train hardest?"
-- "Find weeks where I exceeded 800 TSS and show what happened to my form after"
+Example prompts:
+- "Check my current body state, sleep and training load. I am feeling a bit tired today. How should I proceed with the planned workout tomorrow?"
+- "Analyze workout of today and summarize interval quality vs target."
+- "Compare my FTP progression this year vs last year and show CTL trend around the best block."
+- "Show the last 30 days of sleep and HRV and compare with my form (TSB)."
+- "Insert 20s set rests between the main swim blocks on the workout today."
+- "Update tomorrow's run to structured 6x3min threshold with 2min recoveries."
 
 ## Features
 
