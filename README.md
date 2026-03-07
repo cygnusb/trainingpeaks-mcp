@@ -120,6 +120,16 @@ Restart Claude Desktop. You're ready to go!
 
 ---
 
+#### Coach Context Example (Outside This Repo)
+
+Use the existing `CLAUDE.example.md` as an **Ironman coaching example template**.
+
+- Keep this file outside the git repository, for example in `~/claude/coach`.
+- Target filename: `CLAUDE.md` or `AGENTS.md` (depending on the AI tool you use).
+- Replace all `FIXME` placeholders before real use.
+
+---
+
 ## Tool Reference
 
 ### tp_get_workouts
