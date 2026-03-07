@@ -63,11 +63,42 @@ async def validate_auth(cookie: str) -> AuthResult:
 
             if response.status_code == 200:
                 data = response.json()
+
+                # Token endpoint returns {success, token: {access_token, ...}}
+                # We need to use the access_token to fetch user info
+                token_data = data.get("token", {})
+                access_token = token_data.get("access_token") if token_data else None
+
+                athlete_id = data.get("athleteId")
+                email = data.get("username")
+
+                # If top-level keys missing, fetch user info with access_token
+                if access_token and not athlete_id:
+                    user_headers = {
+                        "Authorization": f"Bearer {access_token}",
+                        "Accept": "application/json",
+                    }
+                    try:
+                        user_resp = await client.get(
+                            f"{TP_API_BASE}/users/v3/user", headers=user_headers
+                        )
+                        if user_resp.status_code == 200:
+                            user_data = user_resp.json()
+                            user_info = user_data.get("user", user_data)
+                            athlete_id = user_info.get("personId")
+                            email = user_info.get("email") or user_info.get("username")
+                            if not athlete_id:
+                                athletes = user_info.get("athletes", [])
+                                if athletes:
+                                    athlete_id = athletes[0].get("athleteId")
+                    except httpx.RequestError:
+                        pass  # User info fetch is best-effort
+
                 return AuthResult(
                     status=AuthStatus.VALID,
-                    athlete_id=data.get("athleteId"),
+                    athlete_id=athlete_id,
                     user_id=data.get("userId"),
-                    email=data.get("username"),  # TP returns email as username
+                    email=email,
                     message="Authentication valid",
                 )
             elif response.status_code == 401:

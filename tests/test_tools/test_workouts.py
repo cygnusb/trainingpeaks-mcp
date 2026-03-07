@@ -1,5 +1,6 @@
 """Tests for workout tools."""
 
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -160,6 +161,25 @@ class TestTpGetWorkout:
         assert result["isError"] is True
         assert result["error_code"] == "NOT_FOUND"
 
+    @pytest.mark.asyncio
+    async def test_get_workout_includes_structured_workout(self, mock_api_responses):
+        """Structured workout payload is returned when present in API response."""
+        user_response = APIResponse(success=True, data={"user": {"personId": 123}})
+        workout_data = dict(mock_api_responses["workout_detail"])
+        workout_data["structure"] = {"structure": [], "polyline": [], "primaryLengthMetric": "duration", "primaryIntensityMetric": "percentOfFtp", "primaryIntensityTargetOrRange": "range"}
+        workout_response = APIResponse(success=True, data=workout_data)
+
+        with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.get = AsyncMock(side_effect=[user_response, workout_response])
+            mock_instance.athlete_id = None
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            result = await tp_get_workout("1001")
+
+        assert "isError" not in result or not result.get("isError")
+        assert result["structured_workout"] == workout_data["structure"]
+
 
 def _mock_client_with_athlete(mock_client_cls, **method_responses):
     """Helper: configure a mock TPClient with ensure_athlete_id=123 and given HTTP methods."""
@@ -229,6 +249,51 @@ class TestTpCreateWorkout:
         assert "description" not in captured_payload
         assert "coachComments" not in captured_payload
         assert "distancePlanned" not in captured_payload
+
+    @pytest.mark.asyncio
+    async def test_create_workout_payload_structure_serialized(self):
+        """Structured workout is serialized as JSON string for TP API."""
+        captured_payload = {}
+        structured_workout = {
+            "structure": [],
+            "polyline": [],
+            "primaryLengthMetric": "duration",
+            "primaryIntensityMetric": "percentOfFtp",
+            "primaryIntensityTargetOrRange": "range",
+        }
+
+        async def capture_post(endpoint, json=None):
+            captured_payload.update(json or {})
+            return APIResponse(success=True, data={"workoutId": 1, "workoutDay": "2026-03-10", "title": "X", "workoutTypeValueId": 3})
+
+        with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.post = capture_post
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            await tp_create_workout(
+                date="2026-03-10",
+                sport="Run",
+                title="X",
+                structured_workout=structured_workout,
+            )
+
+        assert isinstance(captured_payload["structure"], str)
+        assert json.loads(captured_payload["structure"]) == structured_workout
+
+    @pytest.mark.asyncio
+    async def test_create_workout_invalid_structured_payload(self):
+        """Missing required structure keys should be rejected."""
+        result = await tp_create_workout(
+            date="2026-03-10",
+            sport="Run",
+            title="X",
+            structured_workout={"structure": []},
+        )
+        assert result["isError"] is True
+        assert result["error_code"] == "VALIDATION_ERROR"
+        assert "structured_workout" in result["message"]
 
     @pytest.mark.asyncio
     async def test_create_workout_invalid_date(self):
@@ -414,6 +479,38 @@ class TestTpUpdateWorkout:
         result = await tp_update_workout(workout_id="1001", tss_planned=-5)
         assert result["isError"] is True
         assert result["error_code"] == "VALIDATION_ERROR"
+
+    @pytest.mark.asyncio
+    async def test_update_workout_structure_serialized(self):
+        """Structured workout is serialized as JSON string for update calls."""
+        captured_payload = {}
+        current = APIResponse(
+            success=True,
+            data={"workoutId": 1001, "workoutDay": "2026-03-10", "workoutTypeValueId": 2},
+        )
+        structured_workout = {
+            "structure": [],
+            "polyline": [],
+            "primaryLengthMetric": "duration",
+            "primaryIntensityMetric": "percentOfFtp",
+            "primaryIntensityTargetOrRange": "range",
+        }
+
+        async def capture_put(endpoint, json=None):
+            captured_payload.update(json or {})
+            return APIResponse(success=True, data={"workoutId": 1001})
+
+        with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=current)
+            mock_instance.put = capture_put
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            await tp_update_workout(workout_id="1001", structured_workout=structured_workout)
+
+        assert isinstance(captured_payload["structure"], str)
+        assert json.loads(captured_payload["structure"]) == structured_workout
 
 
 class TestTpDeleteWorkout:

@@ -1,6 +1,7 @@
 """TOOL-03 to TOOL-07: Workout read and CRUD tools."""
 
 from datetime import date as date_cls
+import json
 from typing import Any, Literal
 
 from tp_mcp.client import TPClient, WorkoutCreateRequest, WorkoutUpdateRequest, parse_workout_detail, parse_workout_list
@@ -25,6 +26,54 @@ SPORT_TO_FAMILY_ID: dict[str, int] = {
 VALID_SPORTS = set(SPORT_TO_FAMILY_ID.keys())
 # Reverse mapping for display
 FAMILY_ID_TO_SPORT: dict[int, str] = {v: k for k, v in SPORT_TO_FAMILY_ID.items()}
+
+
+def _validate_structured_workout(structured_workout: dict[str, Any]) -> str | None:
+    """Validate the minimum schema needed to round-trip structured workouts."""
+    required = {
+        "structure",
+        "polyline",
+        "primaryLengthMetric",
+        "primaryIntensityMetric",
+        "primaryIntensityTargetOrRange",
+    }
+    missing = required - set(structured_workout.keys())
+    if missing:
+        return f"structured_workout is missing required fields: {', '.join(sorted(missing))}"
+    if not isinstance(structured_workout.get("structure"), list):
+        return "structured_workout.structure must be a list."
+    return None
+
+
+def _encode_workout_structure(structured_workout: dict[str, Any] | None) -> tuple[str | None, str | None]:
+    """Encode workout structure as JSON string for TP write endpoints."""
+    if structured_workout is None:
+        return None, None
+
+    error = _validate_structured_workout(structured_workout)
+    if error:
+        return None, error
+
+    try:
+        return json.dumps(structured_workout, separators=(",", ":")), None
+    except (TypeError, ValueError) as e:
+        return None, f"structured_workout must be JSON-serializable: {e}"
+
+
+def _decode_workout_structure(raw_structure: Any) -> dict[str, Any] | None:
+    """Decode workout structure from TP read responses."""
+    if raw_structure is None:
+        return None
+    if isinstance(raw_structure, dict):
+        return raw_structure
+    if isinstance(raw_structure, str):
+        try:
+            parsed = json.loads(raw_structure)
+            if isinstance(parsed, dict):
+                return parsed
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
 async def _get_athlete_id(client: TPClient) -> int | None:
@@ -196,7 +245,9 @@ async def tp_get_workout(workout_id: str) -> dict[str, Any]:
             }
 
         try:
+            raw_data = response.data if isinstance(response.data, dict) else {}
             workout = parse_workout_detail(response.data)
+            structured_workout = _decode_workout_structure(raw_data.get("structure"))
 
             return {
                 "id": str(workout.id),
@@ -224,6 +275,7 @@ async def tp_get_workout(workout_id: str) -> dict[str, Any]:
                     "calories": workout.calories,
                 },
                 "completed": workout.completed,
+                "structured_workout": structured_workout,
             }
 
         except Exception as e:
@@ -245,6 +297,7 @@ async def tp_create_workout(
     tss_planned: float | None = None,
     if_planned: float | None = None,
     workout_type: str | int | None = None,
+    structured_workout: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Create a new planned workout.
 
@@ -259,6 +312,7 @@ async def tp_create_workout(
         tss_planned: Planned Training Stress Score (>= 0).
         if_planned: Planned Intensity Factor (0.0 - 1.5).
         workout_type: Optional workout type value ID.
+        structured_workout: Structured workout payload from TP workout builder format.
 
     Returns:
         Dict with created workout details.
@@ -289,6 +343,10 @@ async def tp_create_workout(
     if tss_planned is not None and tss_planned < 0:
         return {"isError": True, "error_code": "VALIDATION_ERROR", "message": "tss_planned must be >= 0."}
 
+    structure_payload, structure_error = _encode_workout_structure(structured_workout)
+    if structure_error:
+        return {"isError": True, "error_code": "VALIDATION_ERROR", "message": structure_error}
+
     async with TPClient() as client:
         athlete_id = await client.ensure_athlete_id()
         if not athlete_id:
@@ -307,6 +365,8 @@ async def tp_create_workout(
             ifPlanned=if_planned,
         )
         payload = request.to_api_payload()
+        if structure_payload is not None:
+            payload["structure"] = structure_payload
         payload["athleteId"] = athlete_id  # required by API
 
         endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts"
@@ -349,6 +409,7 @@ async def tp_update_workout(
     tss_planned: float | None = None,
     if_planned: float | None = None,
     workout_type: str | int | None = None,
+    structured_workout: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Update an existing planned workout.
 
@@ -364,6 +425,7 @@ async def tp_update_workout(
         tss_planned: New planned TSS (>= 0).
         if_planned: New planned IF (0.0 - 1.5).
         workout_type: New workout type value ID.
+        structured_workout: Structured workout payload from TP workout builder format.
 
     Returns:
         Dict with updated workout details.
@@ -373,7 +435,19 @@ async def tp_update_workout(
         return {"isError": True, "error_code": "VALIDATION_ERROR", "message": "workout_id must be a numeric ID."}
 
     # Require at least one field
-    update_fields = [date, sport, title, description, coach_comments, duration_planned, distance_planned, tss_planned, if_planned, workout_type]
+    update_fields = [
+        date,
+        sport,
+        title,
+        description,
+        coach_comments,
+        duration_planned,
+        distance_planned,
+        tss_planned,
+        if_planned,
+        workout_type,
+        structured_workout,
+    ]
     if all(f is None for f in update_fields):
         return {"isError": True, "error_code": "VALIDATION_ERROR", "message": "At least one field must be provided to update."}
 
@@ -399,6 +473,10 @@ async def tp_update_workout(
     # Validate TSS
     if tss_planned is not None and tss_planned < 0:
         return {"isError": True, "error_code": "VALIDATION_ERROR", "message": "tss_planned must be >= 0."}
+
+    structure_payload, structure_error = _encode_workout_structure(structured_workout)
+    if structure_error:
+        return {"isError": True, "error_code": "VALIDATION_ERROR", "message": structure_error}
 
     async with TPClient() as client:
         athlete_id = await client.ensure_athlete_id()
@@ -439,6 +517,8 @@ async def tp_update_workout(
             payload["ifPlanned"] = if_planned
         if workout_type is not None:
             payload["workoutTypeValueId"] = workout_type
+        if structure_payload is not None:
+            payload["structure"] = structure_payload
             
         payload["athleteId"] = athlete_id  # ensure athleteId is present
 

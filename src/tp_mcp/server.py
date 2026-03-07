@@ -287,6 +287,10 @@ TOOLS = [
                 "workout_type": {
                     "description": "Optional workout type value ID.",
                 },
+                "structured_workout": {
+                    "type": "object",
+                    "description": "Structured workout payload in TrainingPeaks builder format.",
+                },
             },
             "required": ["date", "sport", "title"],
         },
@@ -340,6 +344,10 @@ TOOLS = [
                 },
                 "workout_type": {
                     "description": "New workout type value ID.",
+                },
+                "structured_workout": {
+                    "type": "object",
+                    "description": "Structured workout payload in TrainingPeaks builder format.",
                 },
             },
             "required": ["workout_id"],
@@ -449,6 +457,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 tss_planned=arguments.get("tss_planned"),
                 if_planned=arguments.get("if_planned"),
                 workout_type=arguments.get("workout_type"),
+                structured_workout=arguments.get("structured_workout"),
             )
 
         elif name == "tp_update_workout":
@@ -464,6 +473,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 tss_planned=arguments.get("tss_planned"),
                 if_planned=arguments.get("if_planned"),
                 workout_type=arguments.get("workout_type"),
+                structured_workout=arguments.get("structured_workout"),
             )
 
         elif name == "tp_delete_workout":
