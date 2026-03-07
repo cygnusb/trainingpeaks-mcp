@@ -19,6 +19,8 @@ from tp_mcp.tools import (
     tp_auth_status,
     tp_create_workout,
     tp_delete_workout,
+    tp_delete_workout_file,
+    tp_download_workout_file,
     tp_get_fitness,
     tp_get_metrics,
     tp_get_metrics_insights,
@@ -29,6 +31,7 @@ from tp_mcp.tools import (
     tp_get_workouts,
     tp_refresh_auth,
     tp_update_workout,
+    tp_upload_workout_file,
 )
 
 # Configure logging to stderr (stdout is used for MCP protocol)
@@ -367,6 +370,72 @@ TOOLS = [
             "required": ["workout_id"],
         },
     ),
+    Tool(
+        name="tp_upload_workout_file",
+        description="Upload a device/activity file to an existing workout. Accepts local file path or base64 data.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "workout_id": {
+                    "type": "string",
+                    "description": "Workout ID to attach file to.",
+                },
+                "file_path": {
+                    "type": "string",
+                    "description": "Absolute/relative local path to the file to upload.",
+                },
+                "file_data_base64": {
+                    "type": "string",
+                    "description": "Alternative to file_path: raw file content as base64 string.",
+                },
+                "workout_day": {
+                    "type": "string",
+                    "description": "Optional workout day (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS). Auto-fetched when omitted.",
+                },
+            },
+            "required": ["workout_id"],
+        },
+    ),
+    Tool(
+        name="tp_download_workout_file",
+        description="Download a workout file by file_id and save it locally.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "workout_id": {
+                    "type": "string",
+                    "description": "Workout ID that owns the file.",
+                },
+                "file_id": {
+                    "type": "string",
+                    "description": "File ID from tp_get_workout.device_files or attachment_files.",
+                },
+                "output_path": {
+                    "type": "string",
+                    "description": "Optional output file path or existing directory.",
+                },
+            },
+            "required": ["workout_id", "file_id"],
+        },
+    ),
+    Tool(
+        name="tp_delete_workout_file",
+        description="Delete a workout file by file_id.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "workout_id": {
+                    "type": "string",
+                    "description": "Workout ID that owns the file.",
+                },
+                "file_id": {
+                    "type": "string",
+                    "description": "File ID to delete.",
+                },
+            },
+            "required": ["workout_id", "file_id"],
+        },
+    ),
 ]
 
 
@@ -479,6 +548,27 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         elif name == "tp_delete_workout":
             result = await tp_delete_workout(
                 workout_id=arguments["workout_id"],
+            )
+
+        elif name == "tp_upload_workout_file":
+            result = await tp_upload_workout_file(
+                workout_id=arguments["workout_id"],
+                file_path=arguments.get("file_path"),
+                file_data_base64=arguments.get("file_data_base64"),
+                workout_day=arguments.get("workout_day"),
+            )
+
+        elif name == "tp_download_workout_file":
+            result = await tp_download_workout_file(
+                workout_id=arguments["workout_id"],
+                file_id=arguments["file_id"],
+                output_path=arguments.get("output_path"),
+            )
+
+        elif name == "tp_delete_workout_file":
+            result = await tp_delete_workout_file(
+                workout_id=arguments["workout_id"],
+                file_id=arguments["file_id"],
             )
 
         else:

@@ -1,12 +1,25 @@
 """Tests for workout tools."""
 
+import base64
+import gzip
 import json
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 
 from tp_mcp.client.http import APIResponse, ErrorCode
-from tp_mcp.tools.workouts import tp_create_workout, tp_delete_workout, tp_get_workout, tp_get_workouts, tp_update_workout
+from tp_mcp.tools.workouts import (
+    tp_create_workout,
+    tp_delete_workout,
+    tp_delete_workout_file,
+    tp_download_workout_file,
+    tp_get_workout,
+    tp_get_workouts,
+    tp_update_workout,
+    tp_upload_workout_file,
+)
 
 
 class TestTpGetWorkouts:
@@ -179,6 +192,40 @@ class TestTpGetWorkout:
 
         assert "isError" not in result or not result.get("isError")
         assert result["structured_workout"] == workout_data["structure"]
+
+    @pytest.mark.asyncio
+    async def test_get_workout_includes_file_infos(self, mock_api_responses):
+        """Workout file metadata arrays are normalized and returned."""
+        user_response = APIResponse(success=True, data={"user": {"personId": 123}})
+        workout_data = dict(mock_api_responses["workout_detail"])
+        workout_data["workoutDeviceFileInfos"] = [
+            {
+                "fileId": -2105693865,
+                "fileSystemId": "-2105693865",
+                "fileName": "example.fit.gz",
+                "dateUploaded": "2026-03-07T06:45:23",
+            }
+        ]
+        workout_data["attachmentFileInfos"] = [
+            {
+                "fileId": 12345,
+                "fileSystemId": "12345",
+                "fileName": "notes.pdf",
+                "dateUploaded": "2026-03-07T06:50:00",
+            }
+        ]
+        workout_response = APIResponse(success=True, data=workout_data)
+
+        with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.get = AsyncMock(side_effect=[user_response, workout_response])
+            mock_instance.athlete_id = None
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            result = await tp_get_workout("1001")
+
+        assert result["device_files"][0]["file_id"] == "-2105693865"
+        assert result["attachment_files"][0]["file_name"] == "notes.pdf"
 
 
 def _mock_client_with_athlete(mock_client_cls, **method_responses):
@@ -573,3 +620,90 @@ class TestTpDeleteWorkout:
             result = await tp_delete_workout("1001")
         assert result["isError"] is True
         assert result["error_code"] == "AUTH_INVALID"
+
+
+class TestWorkoutFileTools:
+    """Tests for workout file upload/download/delete tools."""
+
+    @pytest.mark.asyncio
+    async def test_upload_workout_file_success_base64(self):
+        """Upload encodes payload as base64(gzip(bytes))."""
+        raw = b"fit-bytes"
+        encoded = base64.b64encode(raw).decode("ascii")
+        captured_payload = {}
+
+        async def capture_post(endpoint, json=None):
+            captured_payload.update(json or {})
+            return APIResponse(success=True, data={"workoutId": 1001})
+
+        with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.post = capture_post
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            result = await tp_upload_workout_file(
+                workout_id="1001",
+                file_data_base64=encoded,
+                workout_day="2026-03-07",
+            )
+
+        assert "isError" not in result or not result.get("isError")
+        assert result["workout_id"] == "1001"
+        assert captured_payload["workoutDay"] == "2026-03-07T00:00:00"
+        payload_bytes = gzip.decompress(base64.b64decode(captured_payload["data"]))
+        assert payload_bytes == raw
+
+    @pytest.mark.asyncio
+    async def test_upload_workout_file_requires_content(self):
+        """Upload must receive file_path or base64 content."""
+        result = await tp_upload_workout_file(workout_id="1001")
+        assert result["isError"] is True
+        assert result["error_code"] == "VALIDATION_ERROR"
+
+    @pytest.mark.asyncio
+    async def test_download_workout_file_success(self, tmp_path):
+        """Download writes binary response to disk."""
+        content = gzip.compress(b"abc")
+        request = httpx.Request("GET", "https://tpapi.trainingpeaks.com/test")
+        response = httpx.Response(
+            status_code=200,
+            content=content,
+            headers={
+                "Content-Type": "application/gzip",
+                "Content-Disposition": 'attachment; filename="download.fit.gz"',
+            },
+            request=request,
+        )
+
+        with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance._ensure_access_token = AsyncMock(return_value=APIResponse(success=True))
+            mock_instance._ensure_client = AsyncMock(return_value=None)
+            mock_instance._throttle = AsyncMock(return_value=None)
+            mock_instance.base_url = "https://tpapi.trainingpeaks.com"
+            mock_instance._token_cache = SimpleNamespace(access_token="token")
+            mock_instance._client = AsyncMock()
+            mock_instance._client.request = AsyncMock(return_value=response)
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            result = await tp_download_workout_file("1001", "-2105693865", output_path=str(tmp_path))
+
+        assert "isError" not in result or not result.get("isError")
+        assert result["size_bytes"] == len(content)
+        out = tmp_path / "download.fit.gz"
+        assert out.exists()
+        assert out.read_bytes() == content
+
+    @pytest.mark.asyncio
+    async def test_delete_workout_file_success(self):
+        """Delete workout file uses filedata endpoint and returns confirmation."""
+        deleted = APIResponse(success=True, data=None)
+        with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
+            _mock_client_with_athlete(mock_client, delete=deleted)
+            result = await tp_delete_workout_file("1001", "-2105693865")
+
+        assert "isError" not in result or not result.get("isError")
+        assert result["file_id"] == "-2105693865"
+        assert "deleted" in result["message"].lower()
