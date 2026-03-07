@@ -327,6 +327,19 @@ async def tp_get_workout(workout_id: str) -> dict[str, Any]:
             raw_data = response.data if isinstance(response.data, dict) else {}
             workout = parse_workout_detail(response.data)
             structured_workout = _decode_workout_structure(raw_data.get("structure"))
+            device_files = _extract_file_infos(raw_data, "workoutDeviceFileInfos")
+            attachment_files = _extract_file_infos(raw_data, "attachmentFileInfos")
+
+            # Older TP payload variants may omit file arrays on the base workout endpoint.
+            # Fallback to the /details endpoint only when file keys are missing entirely.
+            file_keys_present = "workoutDeviceFileInfos" in raw_data or "attachmentFileInfos" in raw_data
+            if not file_keys_present:
+                details_endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts/{workout_id}/details"
+                details_response = await client.get(details_endpoint)
+                if details_response.success and isinstance(details_response.data, dict):
+                    details_data = details_response.data
+                    device_files = _extract_file_infos(details_data, "workoutDeviceFileInfos")
+                    attachment_files = _extract_file_infos(details_data, "attachmentFileInfos")
 
             return {
                 "id": str(workout.id),
@@ -355,8 +368,8 @@ async def tp_get_workout(workout_id: str) -> dict[str, Any]:
                 },
                 "completed": workout.completed,
                 "structured_workout": structured_workout,
-                "device_files": _extract_file_infos(raw_data, "workoutDeviceFileInfos"),
-                "attachment_files": _extract_file_infos(raw_data, "attachmentFileInfos"),
+                "device_files": device_files,
+                "attachment_files": attachment_files,
             }
 
         except Exception as e:

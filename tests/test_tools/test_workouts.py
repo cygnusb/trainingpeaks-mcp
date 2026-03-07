@@ -133,11 +133,12 @@ class TestTpGetWorkout:
         workout_response = APIResponse(
             success=True, data=mock_api_responses["workout_detail"]
         )
+        details_response = APIResponse(success=True, data=mock_api_responses["workout_detail"])
 
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.get = AsyncMock(
-                side_effect=[user_response, workout_response]
+                side_effect=[user_response, workout_response, details_response]
             )
             mock_instance.athlete_id = None
             mock_client.return_value.__aenter__.return_value = mock_instance
@@ -181,10 +182,11 @@ class TestTpGetWorkout:
         workout_data = dict(mock_api_responses["workout_detail"])
         workout_data["structure"] = {"structure": [], "polyline": [], "primaryLengthMetric": "duration", "primaryIntensityMetric": "percentOfFtp", "primaryIntensityTargetOrRange": "range"}
         workout_response = APIResponse(success=True, data=workout_data)
+        details_response = APIResponse(success=True, data=workout_data)
 
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(side_effect=[user_response, workout_response])
+            mock_instance.get = AsyncMock(side_effect=[user_response, workout_response, details_response])
             mock_instance.athlete_id = None
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -192,6 +194,33 @@ class TestTpGetWorkout:
 
         assert "isError" not in result or not result.get("isError")
         assert result["structured_workout"] == workout_data["structure"]
+
+    @pytest.mark.asyncio
+    async def test_get_workout_fetches_file_infos_from_details_when_missing_in_base(self, mock_api_responses):
+        """When base endpoint omits file arrays, /details response should provide them."""
+        user_response = APIResponse(success=True, data={"user": {"personId": 123}})
+        workout_response = APIResponse(success=True, data=dict(mock_api_responses["workout_detail"]))
+        details_data = dict(mock_api_responses["workout_detail"])
+        details_data["workoutDeviceFileInfos"] = [
+            {
+                "fileId": 868312223,
+                "fileSystemId": "868312223",
+                "fileName": "example.fit.gz",
+                "dateUploaded": "2018-04-03T15:55:00",
+            }
+        ]
+        details_response = APIResponse(success=True, data=details_data)
+
+        with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.get = AsyncMock(side_effect=[user_response, workout_response, details_response])
+            mock_instance.athlete_id = None
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            result = await tp_get_workout("1001")
+
+        assert result["device_files"][0]["file_id"] == "868312223"
+        assert result["device_files"][0]["file_name"] == "example.fit.gz"
 
     @pytest.mark.asyncio
     async def test_get_workout_includes_file_infos(self, mock_api_responses):
