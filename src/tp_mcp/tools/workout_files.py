@@ -131,7 +131,11 @@ async def tp_upload_workout_file(
     async with TPClient() as client:
         athlete_id = await client.ensure_athlete_id()
         if not athlete_id:
-            return {"isError": True, "error_code": "AUTH_INVALID", "message": "Could not get athlete ID. Re-authenticate."}
+            return {
+                "isError": True,
+                "error_code": "AUTH_INVALID",
+                "message": "Could not get athlete ID. Re-authenticate.",
+            }
 
         resolved_workout_day: str
         if workout_day:
@@ -201,12 +205,20 @@ async def tp_download_workout_file(
     if not _is_numeric_id(workout_id):
         return {"isError": True, "error_code": "VALIDATION_ERROR", "message": "workout_id must be a numeric ID."}
     if not _is_numeric_id(file_id, allow_negative=True):
-        return {"isError": True, "error_code": "VALIDATION_ERROR", "message": "file_id must be a numeric ID (can be negative)."}
+        return {
+            "isError": True,
+            "error_code": "VALIDATION_ERROR",
+            "message": "file_id must be a numeric ID (can be negative).",
+        }
 
     async with TPClient() as client:
         athlete_id = await client.ensure_athlete_id()
         if not athlete_id:
-            return {"isError": True, "error_code": "AUTH_INVALID", "message": "Could not get athlete ID. Re-authenticate."}
+            return {
+                "isError": True,
+                "error_code": "AUTH_INVALID",
+                "message": "Could not get athlete ID. Re-authenticate.",
+            }
 
         token_result = await client._ensure_access_token()
         if not token_result.success:
@@ -227,7 +239,11 @@ async def tp_download_workout_file(
         try:
             response = await client._client.request("GET", url=url, headers=headers)
         except httpx.TimeoutException:
-            return {"isError": True, "error_code": "NETWORK_ERROR", "message": "Request timed out. Check your network connection."}
+            return {
+                "isError": True,
+                "error_code": "NETWORK_ERROR",
+                "message": "Request timed out. Check your network connection.",
+            }
         except httpx.RequestError as e:
             return {"isError": True, "error_code": "NETWORK_ERROR", "message": f"Network error: {e}"}
 
@@ -290,12 +306,20 @@ async def tp_delete_workout_file(workout_id: str, file_id: str) -> dict[str, Any
     if not _is_numeric_id(workout_id):
         return {"isError": True, "error_code": "VALIDATION_ERROR", "message": "workout_id must be a numeric ID."}
     if not _is_numeric_id(file_id, allow_negative=True):
-        return {"isError": True, "error_code": "VALIDATION_ERROR", "message": "file_id must be a numeric ID (can be negative)."}
+        return {
+            "isError": True,
+            "error_code": "VALIDATION_ERROR",
+            "message": "file_id must be a numeric ID (can be negative).",
+        }
 
     async with TPClient() as client:
         athlete_id = await client.ensure_athlete_id()
         if not athlete_id:
-            return {"isError": True, "error_code": "AUTH_INVALID", "message": "Could not get athlete ID. Re-authenticate."}
+            return {
+                "isError": True,
+                "error_code": "AUTH_INVALID",
+                "message": "Could not get athlete ID. Re-authenticate.",
+            }
 
         endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts/{workout_id}/filedata/{file_id}"
         response = await client.delete(endpoint)

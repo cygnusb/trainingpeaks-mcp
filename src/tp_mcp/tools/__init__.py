@@ -47,12 +47,12 @@ from tp_mcp.tools.settings import (
 )
 from tp_mcp.tools.structure import tp_validate_structure
 from tp_mcp.tools.weekly_summary import tp_get_weekly_summary
-from tp_mcp.tools.workout_types import tp_get_workout_types
 from tp_mcp.tools.workout_files import (
     tp_delete_workout_file,
     tp_download_workout_file,
     tp_upload_workout_file,
 )
+from tp_mcp.tools.workout_types import tp_get_workout_types
 from tp_mcp.tools.workouts import (
     tp_add_workout_comment,
     tp_copy_workout,

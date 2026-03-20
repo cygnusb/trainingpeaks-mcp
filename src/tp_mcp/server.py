@@ -19,9 +19,6 @@ from tp_mcp.tools import (
     tp_analyze_workout,
     tp_auth_status,
     tp_copy_workout,
-    tp_delete_workout_file,
-    tp_download_workout_file,
-    tp_upload_workout_file,
     tp_create_availability,
     tp_create_equipment,
     tp_create_event,
@@ -35,6 +32,8 @@ from tp_mcp.tools import (
     tp_delete_library,
     tp_delete_note,
     tp_delete_workout,
+    tp_delete_workout_file,
+    tp_download_workout_file,
     tp_get_athlete_settings,
     tp_get_atp,
     tp_get_availability,
@@ -69,6 +68,7 @@ from tp_mcp.tools import (
     tp_update_nutrition,
     tp_update_speed_zones,
     tp_update_workout,
+    tp_upload_workout_file,
     tp_validate_structure,
 )
 from tp_mcp.tools.workouts import SPORT_TYPE_MAP
@@ -301,14 +301,20 @@ TOOLS = [
                 "workout_id": {"type": "string", "description": "Workout ID"},
                 "file_path": {"type": "string", "description": "Path to file on disk"},
                 "file_data_base64": {"type": "string", "description": "Base64-encoded file bytes"},
-                "workout_day": {"type": "string", "description": "YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS. Auto-fetched if omitted."},
+                "workout_day": {
+                    "type": "string",
+                    "description": "YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS. Auto-fetched if omitted.",
+                },
             },
             "required": ["workout_id"],
         },
     ),
     Tool(
         name="tp_download_workout_file",
-        description="Download a workout file by file_id. Get file_id from tp_get_workout device_files/attachment_files.",
+        description=(
+            "Download a workout file by file_id."
+            " Get file_id from tp_get_workout device_files/attachment_files."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
