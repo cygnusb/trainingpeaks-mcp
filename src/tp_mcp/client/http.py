@@ -524,7 +524,7 @@ class TPClient:
                         f"Ambiguous athlete name '{athlete}' matches {len(matches)} athletes: "
                         + ", ".join(names)
                         + ". Use full name or athlete ID to disambiguate."
-                    )
+                    ) from None
         elif athletes:
             # Default: find the coach's own athlete entry
             for a in athletes:
