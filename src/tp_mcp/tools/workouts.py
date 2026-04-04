@@ -63,7 +63,13 @@ def _prepare_structure_payload(
         parsed_structure = parse_structure_input(structure)
         wire_structure = build_wire_structure(parsed_structure)
         structure_if, structure_tss, total_seconds = compute_if_tss(parsed_structure)
-        return StructurePayload(wire_structure, total_seconds / 60.0, structure_if, structure_tss, None)
+        return StructurePayload(
+            wire_structure=wire_structure,
+            duration_minutes=total_seconds / 60.0,
+            intensity_factor=structure_if,
+            tss=structure_tss,
+            error=None,
+        )
     except (ValidationError, ValueError) as e:
         msg = format_validation_error(e) if isinstance(e, ValidationError) else str(e)
         return StructurePayload(None, None, None, None, f"Invalid structure: {msg}")
