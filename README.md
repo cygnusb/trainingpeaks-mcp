@@ -89,7 +89,11 @@ Ask your AI assistant things like:
 | `tp_update_event` | Update event details |
 | `tp_delete_event` | Delete an event |
 | `tp_create_note` | Create a calendar note |
+| `tp_get_note` | Get a calendar note by ID |
+| `tp_update_note` | Update title, description, date or visibility of a note |
 | `tp_delete_note` | Delete a calendar note |
+| `tp_get_note_comments` | List all comments on a note |
+| `tp_add_note_comment` | Add a comment to a note |
 | `tp_get_availability` | List unavailable/limited periods |
 | `tp_create_availability` | Mark dates as unavailable or limited |
 | `tp_delete_availability` | Remove availability entry |
