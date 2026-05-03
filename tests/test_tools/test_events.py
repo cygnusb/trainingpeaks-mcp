@@ -290,6 +290,12 @@ class TestUpdateNote:
         assert result["error_code"] == "VALIDATION_ERROR"
 
     @pytest.mark.asyncio
+    async def test_update_note_whitespace_title(self):
+        result = await tp_update_note(note_id="123", title="   ")
+        assert result["isError"] is True
+        assert result["error_code"] == "VALIDATION_ERROR"
+
+    @pytest.mark.asyncio
     async def test_update_note_get_fails(self):
         get_response = APIResponse(success=False, error_code=ErrorCode.NOT_FOUND, message="Not found")
         with patch("tp_mcp.tools.events.TPClient") as mock_client:

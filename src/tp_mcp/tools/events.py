@@ -634,6 +634,13 @@ async def tp_update_note(
             "message": "Provide at least one field to update (title, description, date, is_hidden).",
         }
 
+    if title is not None and not title.strip():
+        return {
+            "isError": True,
+            "error_code": "VALIDATION_ERROR",
+            "message": "Title must not be empty.",
+        }
+
     try:
         validated = WorkoutIdInput(workout_id=note_id)
     except (ValidationError, ValueError) as e:
