@@ -289,6 +289,21 @@ class TestUpdateNote:
         assert result["isError"] is True
         assert result["error_code"] == "VALIDATION_ERROR"
 
+    @pytest.mark.asyncio
+    async def test_update_note_get_fails(self):
+        get_response = APIResponse(success=False, error_code=ErrorCode.NOT_FOUND, message="Not found")
+        with patch("tp_mcp.tools.events.TPClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=get_response)
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            result = await tp_update_note(note_id="999", title="X")
+
+        assert result["isError"] is True
+        assert result["error_code"] == "NOT_FOUND"
+        mock_instance.put.assert_not_called()
+
 
 class TestGetNoteComments:
     @pytest.mark.asyncio
