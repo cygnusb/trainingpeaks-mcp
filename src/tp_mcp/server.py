@@ -16,6 +16,7 @@ from mcp.types import (
 from tp_mcp.auth import get_credential, validate_auth
 from tp_mcp.client.context import athlete_override
 from tp_mcp.tools import (
+    tp_add_note_comment,
     tp_add_workout_comment,
     tp_analyze_workout,
     tp_auth_status,
@@ -25,7 +26,6 @@ from tp_mcp.tools import (
     tp_create_event,
     tp_create_library,
     tp_create_library_item,
-    tp_add_note_comment,
     tp_create_note,
     tp_create_workout,
     tp_delete_availability,
@@ -69,10 +69,10 @@ from tp_mcp.tools import (
     tp_unpair_workout,
     tp_update_equipment,
     tp_update_event,
-    tp_update_note,
     tp_update_ftp,
     tp_update_hr_zones,
     tp_update_library_item,
+    tp_update_note,
     tp_update_nutrition,
     tp_update_speed_zones,
     tp_update_workout,
